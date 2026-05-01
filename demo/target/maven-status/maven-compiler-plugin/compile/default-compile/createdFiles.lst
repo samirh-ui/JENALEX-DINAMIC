@@ -1,1 +1,3 @@
+com\example\view\HelpDeskView.class
+com\example\controller\HelpDeskController.class
 com\example\service\HelpDeskSystem.class
