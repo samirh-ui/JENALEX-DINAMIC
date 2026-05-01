@@ -1,9 +1,9 @@
 package com.example.model;
 
+import java.text.SimpleDateFormat;
 import java.util.Date;
 
 public class Ticket {
-
     private int id;
     private String descripcion;
     private String estado;
@@ -11,6 +11,19 @@ public class Ticket {
     private int idUsuario;
     private int idTecnico;
     private Date fecha;
+
+    public Ticket() {
+    }
+
+    public Ticket(int id, String descripcion, String prioridad, int idUsuario) {
+        this.id = id;
+        this.descripcion = descripcion;
+        this.prioridad = prioridad;
+        this.idUsuario = idUsuario;
+        this.estado = "Abierto";
+        this.idTecnico = 0;
+        this.fecha = new Date();
+    }
 
     public int getId() {
         return id;
@@ -68,8 +81,10 @@ public class Ticket {
         this.fecha = fecha;
     }
 
-    
-
-
-    
+    @Override
+    public String toString() {
+        String fechaFormateada = new SimpleDateFormat("yyyy-MM-dd HH:mm").format(fecha);
+        return String.format("Ticket #%d | %s | Prioridad: %s | Estado: %s | Usuario ID: %d | Técnico ID: %d | Fecha: %s",
+                id, descripcion, prioridad, estado, idUsuario, idTecnico, fechaFormateada);
+    }
 }
