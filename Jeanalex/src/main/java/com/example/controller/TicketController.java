@@ -2,17 +2,17 @@ package com.example.controller;
 
 import com.example.dao.TicketDao;
 import com.example.model.Ticket;
+import com.example.service.TicketService;
 
 import java.sql.SQLException;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 public class TicketController {
-    private final TicketDao ticketDao;
+    private final TicketService ticketService;
 
     public TicketController(TicketDao ticketDao) {
-        this.ticketDao = ticketDao;
+        this.ticketService = new TicketService(ticketDao);
     }
 
     public Ticket registrarTicket(
@@ -23,58 +23,30 @@ public class TicketController {
             int idAgente,
             int idAns
     ) throws SQLException {
-        Ticket ticket = new Ticket();
-        ticket.setAsunto(asunto);
-        ticket.setDescripcion(descripcion);
-        ticket.setTipoSolicitud(tipoSolicitud);
-        ticket.setPrioridad(prioridad);
-        ticket.setIdAgente(idAgente);
-        ticket.setIdAns(idAns);
-        ticket.setEstado("Abierta");
-        ticket.setFechaCreacion(LocalDateTime.now());
-        return ticketDao.crear(ticket);
+        return ticketService.registrarTicket(asunto, descripcion, tipoSolicitud, prioridad, idAgente, idAns);
     }
 
     public boolean asignarTecnico(int idTicket, int idCoordinador, int idTecnico) throws SQLException {
-        Optional<Ticket> ticketEncontrado = ticketDao.buscarPorId(idTicket);
-        if (ticketEncontrado.isEmpty()) {
-            return false;
-        }
-
-        Ticket ticket = ticketEncontrado.get();
-        ticket.setIdCoordinador(idCoordinador);
-        ticket.setIdTecnico(idTecnico);
-        ticket.setEstado("Asignada");
-        ticket.setFechaAsignacion(LocalDateTime.now());
-        return ticketDao.actualizar(ticket);
+        return ticketService.asignarTecnico(idTicket, idCoordinador, idTecnico);
     }
 
     public boolean cerrarTicket(int idTicket, String evidencia) throws SQLException {
-        Optional<Ticket> ticketEncontrado = ticketDao.buscarPorId(idTicket);
-        if (ticketEncontrado.isEmpty()) {
-            return false;
-        }
-
-        Ticket ticket = ticketEncontrado.get();
-        ticket.setEstado("Cerrada");
-        ticket.setEvidencia(evidencia);
-        ticket.setFechaCierre(LocalDateTime.now());
-        return ticketDao.actualizar(ticket);
+        return ticketService.cerrarTicket(idTicket, evidencia);
     }
 
     public List<Ticket> listarTickets() throws SQLException {
-        return ticketDao.listar();
+        return ticketService.listarTickets();
     }
 
     public List<Ticket> listarPendientes() throws SQLException {
-        return ticketDao.listarPendientes();
+        return ticketService.listarPendientes();
     }
 
     public Optional<Ticket> buscarTicket(int id) throws SQLException {
-        return ticketDao.buscarPorId(id);
+        return ticketService.buscarTicket(id);
     }
 
     public boolean eliminarTicket(int id) throws SQLException {
-        return ticketDao.eliminar(id);
+        return ticketService.eliminarTicket(id);
     }
 }

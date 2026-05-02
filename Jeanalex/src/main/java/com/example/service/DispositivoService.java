@@ -1,18 +1,18 @@
-package com.example.controller;
+package com.example.service;
 
 import com.example.dao.DispositivoDao;
 import com.example.model.Dispositivo;
-import com.example.service.DispositivoService;
 
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-public class DispositivoController {
-    private final DispositivoService dispositivoService;
+public class DispositivoService {
+    private final DispositivoDao dispositivoDao;
 
-    public DispositivoController(DispositivoDao dispositivoDao) {
-        this.dispositivoService = new DispositivoService(dispositivoDao);
+    public DispositivoService(DispositivoDao dispositivoDao) {
+        this.dispositivoDao = dispositivoDao;
     }
 
     public Dispositivo registrarDispositivo(
@@ -24,22 +24,25 @@ public class DispositivoController {
             String estado,
             String ubicacion
     ) throws SQLException {
-        return dispositivoService.registrarDispositivo(nombre, serial, marca, modelo, categoria, estado, ubicacion);
+        Dispositivo dispositivo = new Dispositivo(nombre, serial, marca, modelo, categoria, estado);
+        dispositivo.setUbicacion(ubicacion);
+        dispositivo.setFechaIngreso(LocalDate.now());
+        return dispositivoDao.crear(dispositivo);
     }
 
     public List<Dispositivo> listarDispositivos() throws SQLException {
-        return dispositivoService.listarDispositivos();
+        return dispositivoDao.listar();
     }
 
     public Optional<Dispositivo> buscarDispositivo(int id) throws SQLException {
-        return dispositivoService.buscarDispositivo(id);
+        return dispositivoDao.buscarPorId(id);
     }
 
     public boolean actualizarDispositivo(Dispositivo dispositivo) throws SQLException {
-        return dispositivoService.actualizarDispositivo(dispositivo);
+        return dispositivoDao.actualizar(dispositivo);
     }
 
     public boolean eliminarDispositivo(int id) throws SQLException {
-        return dispositivoService.eliminarDispositivo(id);
+        return dispositivoDao.eliminar(id);
     }
 }
