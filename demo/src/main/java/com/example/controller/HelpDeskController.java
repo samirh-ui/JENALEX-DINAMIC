@@ -47,7 +47,7 @@ public class HelpDeskController {
             return;
         }
 
-        String descripcion = view.leerTexto("Descripción del problema: ");
+        String descripcion = view.leerTextoNoVacio("Descripción del problema: ");
         String prioridad = view.leerTexto("Prioridad (Baja/Media/Alta): ");
         Ticket ticket = model.crearTicket(descripcion, prioridad, idUsuario);
         view.mostrarMensaje("Ticket creado correctamente: " + ticket);

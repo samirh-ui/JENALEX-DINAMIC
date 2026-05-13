@@ -36,6 +36,16 @@ public class HelpDeskView {
         return scanner.nextLine().trim();
     }
 
+    public String leerTextoNoVacio(String mensaje) {
+        while (true) {
+            String texto = leerTexto(mensaje);
+            if (!texto.isBlank()) {
+                return texto;
+            }
+            System.out.println("La descripción no puede estar vacía. Intente de nuevo.");
+        }
+    }
+
     public void mostrarUsuarios(List<Usuario> usuarios) {
         System.out.println("Usuarios disponibles:");
         for (Usuario usuario : usuarios) {
