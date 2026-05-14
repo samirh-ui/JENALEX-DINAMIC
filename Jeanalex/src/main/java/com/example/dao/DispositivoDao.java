@@ -3,12 +3,12 @@ package com.example.dao;
 import com.example.config.ConexionPostgresDatabase;
 import com.example.model.Dispositivo;
 
+import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -16,21 +16,35 @@ import java.util.Optional;
 public class DispositivoDao implements CrudDao<Dispositivo> {
     @Override
     public Dispositivo crear(Dispositivo dispositivo) throws SQLException {
-        String sql = """
-                INSERT INTO dispositivo (nombre, serial, marca, modelo, categoria, estado, ubicacion, fecha_ingreso)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """;
 
-        try (Connection connection = ConexionPostgresDatabase.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            completarStatement(statement, dispositivo);
-            statement.executeUpdate();
+        String sql =
+                "CALL sp_crear_dispositivo(?,?,?,?,?,?,?,?)";
 
-            try (ResultSet keys = statement.getGeneratedKeys()) {
-                if (keys.next()) {
-                    dispositivo.setId(keys.getInt(1));
-                }
-            }
+        try (
+                Connection connection =
+                        ConexionPostgresDatabase.getConnection();
+
+                CallableStatement statement =
+                        connection.prepareCall(sql)
+        ) {
+
+            statement.setString(1, dispositivo.getNombre());
+            statement.setString(2, dispositivo.getSerial());
+            statement.setString(3, dispositivo.getMarca());
+            statement.setString(4, dispositivo.getModelo());
+            statement.setString(5, dispositivo.getCategoria());
+            statement.setString(6, dispositivo.getEstado());
+            statement.setString(7, dispositivo.getUbicacion());
+
+            statement.setDate(
+                    8,
+                    dispositivo.getFechaIngreso() == null
+                            ? null
+                            : Date.valueOf(dispositivo.getFechaIngreso())
+            );
+
+            statement.execute();
+
         }
 
         return dispositivo;
@@ -56,11 +70,11 @@ public class DispositivoDao implements CrudDao<Dispositivo> {
 
     @Override
     public List<Dispositivo> listar() throws SQLException {
-        String sql = "SELECT * FROM dispositivo ORDER BY nombre";
+        String sql = "CALL sp_listar_dispositivos()";
         List<Dispositivo> dispositivos = new ArrayList<>();
 
         try (Connection connection = ConexionPostgresDatabase.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql);
+             CallableStatement statement = connection.prepareCall(sql);
              ResultSet resultSet = statement.executeQuery()) {
             while (resultSet.next()) {
                 dispositivos.add(mapear(resultSet));
@@ -72,14 +86,10 @@ public class DispositivoDao implements CrudDao<Dispositivo> {
 
     @Override
     public boolean actualizar(Dispositivo dispositivo) throws SQLException {
-        String sql = """
-                UPDATE dispositivo
-                SET nombre = ?, serial = ?, marca = ?, modelo = ?, categoria = ?, estado = ?, ubicacion = ?, fecha_ingreso = ?
-                WHERE id = ?
-                """;
+        String sql = "CALL sp_actualizar_dispositivo(?,?,?,?,?,?,?,?,?)";
 
         try (Connection connection = ConexionPostgresDatabase.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+             CallableStatement statement = connection.prepareCall(sql)) {
             completarStatement(statement, dispositivo);
             statement.setInt(9, dispositivo.getId());
             return statement.executeUpdate() > 0;
@@ -88,10 +98,10 @@ public class DispositivoDao implements CrudDao<Dispositivo> {
 
     @Override
     public boolean eliminar(int id) throws SQLException {
-        String sql = "DELETE FROM dispositivo WHERE id = ?";
+        String sql = "CALL sp_eliminar_dispositivo(?)";
 
         try (Connection connection = ConexionPostgresDatabase.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+             CallableStatement statement = connection.prepareCall(sql)) {
             statement.setInt(1, id);
             return statement.executeUpdate() > 0;
         }
