@@ -3,36 +3,31 @@ package com.example.dao;
 import com.example.config.ConexionPostgresDatabase;
 import com.example.model.Ticket;
 
+import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 public class TicketDao implements CrudDao<Ticket> {
+
     @Override
     public Ticket crear(Ticket ticket) throws SQLException {
-        String sql = """
-                INSERT INTO ticket
-                (asunto, descripcion, tipo_solicitud, estado, prioridad, id_agente, id_coordinador, id_tecnico, id_ans,
-                 evidencia, fecha_creacion, fecha_asignacion, fecha_cierre)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """;
+        String sql = "CALL sp_crear_ticket(?,?,?,?)";
 
         try (Connection connection = ConexionPostgresDatabase.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            completarStatement(statement, ticket);
-            statement.executeUpdate();
+             CallableStatement statement = connection.prepareCall(sql)) {
 
-            try (ResultSet keys = statement.getGeneratedKeys()) {
-                if (keys.next()) {
-                    ticket.setId(keys.getInt(1));
-                }
-            }
+            statement.setString(1, ticket.getAsunto());
+            statement.setString(2, ticket.getDescripcion());
+            statement.setString(3, ticket.getEstado());
+            statement.setString(4, ticket.getPrioridad());
+
+            statement.execute();
         }
 
         return ticket;
@@ -40,10 +35,11 @@ public class TicketDao implements CrudDao<Ticket> {
 
     @Override
     public Optional<Ticket> buscarPorId(int id) throws SQLException {
-        String sql = "SELECT * FROM ticket WHERE id = ?";
+        String sql = "CALL sp_buscar_ticket(?)";
 
         try (Connection connection = ConexionPostgresDatabase.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+             CallableStatement statement = connection.prepareCall(sql)) {
+
             statement.setInt(1, id);
 
             try (ResultSet resultSet = statement.executeQuery()) {
@@ -58,12 +54,14 @@ public class TicketDao implements CrudDao<Ticket> {
 
     @Override
     public List<Ticket> listar() throws SQLException {
-        String sql = "SELECT * FROM ticket ORDER BY fecha_creacion DESC";
+        String sql = "CALL sp_listar_tickets()";
+
         List<Ticket> tickets = new ArrayList<>();
 
         try (Connection connection = ConexionPostgresDatabase.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql);
+             CallableStatement statement = connection.prepareCall(sql);
              ResultSet resultSet = statement.executeQuery()) {
+
             while (resultSet.next()) {
                 tickets.add(mapear(resultSet));
             }
@@ -73,12 +71,13 @@ public class TicketDao implements CrudDao<Ticket> {
     }
 
     public List<Ticket> listarPendientes() throws SQLException {
-        String sql = "SELECT * FROM ticket WHERE estado IN ('Abierta', 'Pendiente') ORDER BY fecha_creacion";
+        String sql = "CALL sp_listar_tickets_pendientes()";
         List<Ticket> tickets = new ArrayList<>();
 
         try (Connection connection = ConexionPostgresDatabase.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql);
+             CallableStatement statement = connection.prepareCall(sql);
              ResultSet resultSet = statement.executeQuery()) {
+
             while (resultSet.next()) {
                 tickets.add(mapear(resultSet));
             }
@@ -89,28 +88,27 @@ public class TicketDao implements CrudDao<Ticket> {
 
     @Override
     public boolean actualizar(Ticket ticket) throws SQLException {
-        String sql = """
-                UPDATE ticket
-                SET asunto = ?, descripcion = ?, tipo_solicitud = ?, estado = ?, prioridad = ?, id_agente = ?,
-                    id_coordinador = ?, id_tecnico = ?, id_ans = ?, evidencia = ?, fecha_creacion = ?,
-                    fecha_asignacion = ?, fecha_cierre = ?
-                WHERE id = ?
-                """;
+        String sql = "CALL sp_actualizar_ticket(?,?,?,?)";
 
         try (Connection connection = ConexionPostgresDatabase.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            completarStatement(statement, ticket);
-            statement.setInt(14, ticket.getId());
+             CallableStatement statement = connection.prepareCall(sql)) {
+
+            statement.setInt(1, ticket.getId());
+            statement.setString(2, ticket.getAsunto());
+            statement.setString(3, ticket.getDescripcion());
+            statement.setString(4, ticket.getEstado());
+
             return statement.executeUpdate() > 0;
         }
     }
 
     @Override
     public boolean eliminar(int id) throws SQLException {
-        String sql = "DELETE FROM ticket WHERE id = ?";
+        String sql = "CALL sp_eliminar_ticket(?)";
 
         try (Connection connection = ConexionPostgresDatabase.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+             CallableStatement statement = connection.prepareCall(sql)) {
+
             statement.setInt(1, id);
             return statement.executeUpdate() > 0;
         }
@@ -145,21 +143,9 @@ public class TicketDao implements CrudDao<Ticket> {
         ticket.setIdTecnico(resultSet.getInt("id_tecnico"));
         ticket.setIdAns(resultSet.getInt("id_ans"));
         ticket.setEvidencia(resultSet.getString("evidencia"));
-
-        Timestamp fechaCreacion = resultSet.getTimestamp("fecha_creacion");
-        Timestamp fechaAsignacion = resultSet.getTimestamp("fecha_asignacion");
-        Timestamp fechaCierre = resultSet.getTimestamp("fecha_cierre");
-
-        if (fechaCreacion != null) {
-            ticket.setFechaCreacion(fechaCreacion.toLocalDateTime());
-        }
-        if (fechaAsignacion != null) {
-            ticket.setFechaAsignacion(fechaAsignacion.toLocalDateTime());
-        }
-        if (fechaCierre != null) {
-            ticket.setFechaCierre(fechaCierre.toLocalDateTime());
-        }
-
+        ticket.setFechaCreacion(resultSet.getTimestamp("fecha_creacion") == null ? null : resultSet.getTimestamp("fecha_creacion").toLocalDateTime());
+        ticket.setFechaAsignacion(resultSet.getTimestamp("fecha_asignacion") == null ? null : resultSet.getTimestamp("fecha_asignacion").toLocalDateTime());
+        ticket.setFechaCierre(resultSet.getTimestamp("fecha_cierre") == null ? null : resultSet.getTimestamp("fecha_cierre").toLocalDateTime());
         return ticket;
     }
 }
