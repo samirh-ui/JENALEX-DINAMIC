@@ -8,7 +8,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -17,17 +19,23 @@ public class TicketDao implements CrudDao<Ticket> {
 
     @Override
     public Ticket crear(Ticket ticket) throws SQLException {
-        String sql = "CALL sp_crear_ticket(?,?,?,?)";
+        String sql = """
+                INSERT INTO ticket (asunto, descripcion, tipo_solicitud, estado, prioridad, id_agente,
+                                    id_coordinador, id_tecnico, id_ans, evidencia, fecha_creacion,
+                                    fecha_asignacion, fecha_cierre)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """;
 
         try (Connection connection = ConexionPostgresDatabase.getConnection();
-             CallableStatement statement = connection.prepareCall(sql)) {
+             PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            completarStatement(statement, ticket);
+            statement.executeUpdate();
 
-            statement.setString(1, ticket.getAsunto());
-            statement.setString(2, ticket.getDescripcion());
-            statement.setString(3, ticket.getEstado());
-            statement.setString(4, ticket.getPrioridad());
-
-            statement.execute();
+            try (ResultSet keys = statement.getGeneratedKeys()) {
+                if (keys.next()) {
+                    ticket.setId(keys.getInt(1));
+                }
+            }
         }
 
         return ticket;
@@ -35,10 +43,16 @@ public class TicketDao implements CrudDao<Ticket> {
 
     @Override
     public Optional<Ticket> buscarPorId(int id) throws SQLException {
-        String sql = "CALL sp_buscar_ticket(?)";
+        String sql = """
+                SELECT id, asunto, descripcion, tipo_solicitud, estado, prioridad, id_agente,
+                       id_coordinador, id_tecnico, id_ans, evidencia, fecha_creacion,
+                       fecha_asignacion, fecha_cierre
+                FROM ticket
+                WHERE id = ?
+                """;
 
         try (Connection connection = ConexionPostgresDatabase.getConnection();
-             CallableStatement statement = connection.prepareCall(sql)) {
+             PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setInt(1, id);
 
@@ -54,12 +68,18 @@ public class TicketDao implements CrudDao<Ticket> {
 
     @Override
     public List<Ticket> listar() throws SQLException {
-        String sql = "CALL sp_listar_tickets()";
+        String sql = """
+                SELECT id, asunto, descripcion, tipo_solicitud, estado, prioridad, id_agente,
+                       id_coordinador, id_tecnico, id_ans, evidencia, fecha_creacion,
+                       fecha_asignacion, fecha_cierre
+                FROM ticket
+                ORDER BY fecha_creacion DESC
+                """;
 
         List<Ticket> tickets = new ArrayList<>();
 
         try (Connection connection = ConexionPostgresDatabase.getConnection();
-             CallableStatement statement = connection.prepareCall(sql);
+             PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet resultSet = statement.executeQuery()) {
 
             while (resultSet.next()) {
@@ -71,11 +91,19 @@ public class TicketDao implements CrudDao<Ticket> {
     }
 
     public List<Ticket> listarPendientes() throws SQLException {
-        String sql = "CALL sp_listar_tickets_pendientes()";
+        String sql = """
+                SELECT id, asunto, descripcion, tipo_solicitud, estado, prioridad, id_agente,
+                       id_coordinador, id_tecnico, id_ans, evidencia, fecha_creacion,
+                       fecha_asignacion, fecha_cierre
+                FROM ticket
+                WHERE id_tecnico IS NULL
+                   OR LOWER(COALESCE(estado, '')) IN ('abierta', 'abierto', 'pendiente')
+                ORDER BY fecha_creacion DESC
+                """;
         List<Ticket> tickets = new ArrayList<>();
 
         try (Connection connection = ConexionPostgresDatabase.getConnection();
-             CallableStatement statement = connection.prepareCall(sql);
+             PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet resultSet = statement.executeQuery()) {
 
             while (resultSet.next()) {
@@ -88,26 +116,28 @@ public class TicketDao implements CrudDao<Ticket> {
 
     @Override
     public boolean actualizar(Ticket ticket) throws SQLException {
-        String sql = "CALL sp_actualizar_ticket(?,?,?,?)";
+        String sql = """
+                UPDATE ticket
+                SET asunto = ?, descripcion = ?, tipo_solicitud = ?, estado = ?, prioridad = ?,
+                    id_agente = ?, id_coordinador = ?, id_tecnico = ?, id_ans = ?, evidencia = ?,
+                    fecha_creacion = ?, fecha_asignacion = ?, fecha_cierre = ?
+                WHERE id = ?
+                """;
 
         try (Connection connection = ConexionPostgresDatabase.getConnection();
-             CallableStatement statement = connection.prepareCall(sql)) {
-
-            statement.setInt(1, ticket.getId());
-            statement.setString(2, ticket.getAsunto());
-            statement.setString(3, ticket.getDescripcion());
-            statement.setString(4, ticket.getEstado());
-
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            completarStatement(statement, ticket);
+            statement.setInt(14, ticket.getId());
             return statement.executeUpdate() > 0;
         }
     }
 
     @Override
     public boolean eliminar(int id) throws SQLException {
-        String sql = "CALL sp_eliminar_ticket(?)";
+        String sql = "DELETE FROM ticket WHERE id = ?";
 
         try (Connection connection = ConexionPostgresDatabase.getConnection();
-             CallableStatement statement = connection.prepareCall(sql)) {
+             PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setInt(1, id);
             return statement.executeUpdate() > 0;
@@ -121,8 +151,16 @@ public class TicketDao implements CrudDao<Ticket> {
         statement.setString(4, ticket.getEstado());
         statement.setString(5, ticket.getPrioridad());
         statement.setInt(6, ticket.getIdAgente());
-        statement.setInt(7, ticket.getIdCoordinador());
-        statement.setInt(8, ticket.getIdTecnico());
+        if (ticket.getIdCoordinador() > 0) {
+            statement.setInt(7, ticket.getIdCoordinador());
+        } else {
+            statement.setNull(7, Types.INTEGER);
+        }
+        if (ticket.getIdTecnico() > 0) {
+            statement.setInt(8, ticket.getIdTecnico());
+        } else {
+            statement.setNull(8, Types.INTEGER);
+        }
         statement.setInt(9, ticket.getIdAns());
         statement.setString(10, ticket.getEvidencia());
         statement.setTimestamp(11, ticket.getFechaCreacion() == null ? null : Timestamp.valueOf(ticket.getFechaCreacion()));

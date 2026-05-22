@@ -34,12 +34,23 @@ public class DispositivoController {
         return dispositivoDao.listar();
     }
 
+    public List<Dispositivo> buscarDispositivos(String filtro) throws SQLException {
+        if (filtro == null || filtro.isBlank()) {
+            return listarDispositivos();
+        }
+        return dispositivoDao.buscarPorFiltro(filtro.trim());
+    }
+
     public Optional<Dispositivo> buscarDispositivo(int id) throws SQLException {
         return dispositivoDao.buscarPorId(id);
     }
 
     public boolean actualizarDispositivo(Dispositivo dispositivo) throws SQLException {
         return dispositivoDao.actualizar(dispositivo);
+    }
+
+    public boolean actualizarEstado(int idDispositivo, String estado) throws SQLException {
+        return dispositivoDao.actualizarEstado(idDispositivo, estado);
     }
 
     public boolean eliminarDispositivo(int id) throws SQLException {

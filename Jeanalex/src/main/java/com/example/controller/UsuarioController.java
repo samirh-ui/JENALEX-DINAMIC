@@ -19,7 +19,7 @@ public class UsuarioController {
     }
 
     public Usuario registrarUsuario(String nombre, String correo, String contrasenaHash, int idRol) throws SQLException {
-        Usuario usuario = new Usuario(nombre, correo, contrasenaHash, idRol);
+        Usuario usuario = new Usuario(nombre, correo, sha256(contrasenaHash), idRol);
         return usuarioDao.crear(usuario);
     }
 

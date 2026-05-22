@@ -67,8 +67,20 @@ public class Usuario {
         this.activo = activo;
     }
 
-    public void setEstado(String string) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setEstado'");
+    public String getEstado() {
+        return activo ? "Activo" : "Inactivo";
+    }
+
+    public void setEstado(String estado) {
+        if (estado == null) {
+            this.activo = false;
+            return;
+        }
+
+        String valor = estado.trim().toLowerCase();
+        this.activo = valor.equals("activo")
+                || valor.equals("activa")
+                || valor.equals("true")
+                || valor.equals("1");
     }
 }

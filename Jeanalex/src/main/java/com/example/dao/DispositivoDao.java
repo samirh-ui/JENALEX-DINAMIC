@@ -3,12 +3,12 @@ package com.example.dao;
 import com.example.config.ConexionPostgresDatabase;
 import com.example.model.Dispositivo;
 
-import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -17,34 +17,25 @@ public class DispositivoDao implements CrudDao<Dispositivo> {
     @Override
     public Dispositivo crear(Dispositivo dispositivo) throws SQLException {
 
-        String sql =
-                "CALL sp_crear_dispositivo(?,?,?,?,?,?,?,?)";
+        String sql = """
+                INSERT INTO dispositivo (nombre, serial, marca, modelo, categoria, estado, ubicacion, fecha_ingreso)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """;
 
         try (
                 Connection connection =
                         ConexionPostgresDatabase.getConnection();
 
-                CallableStatement statement =
-                        connection.prepareCall(sql)
+                PreparedStatement statement =
+                        connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)
         ) {
-
-            statement.setString(1, dispositivo.getNombre());
-            statement.setString(2, dispositivo.getSerial());
-            statement.setString(3, dispositivo.getMarca());
-            statement.setString(4, dispositivo.getModelo());
-            statement.setString(5, dispositivo.getCategoria());
-            statement.setString(6, dispositivo.getEstado());
-            statement.setString(7, dispositivo.getUbicacion());
-
-            statement.setDate(
-                    8,
-                    dispositivo.getFechaIngreso() == null
-                            ? null
-                            : Date.valueOf(dispositivo.getFechaIngreso())
-            );
-
-            statement.execute();
-
+            completarStatement(statement, dispositivo);
+            statement.executeUpdate();
+            try (ResultSet keys = statement.getGeneratedKeys()) {
+                if (keys.next()) {
+                    dispositivo.setId(keys.getInt(1));
+                }
+            }
         }
 
         return dispositivo;
@@ -70,15 +61,19 @@ public class DispositivoDao implements CrudDao<Dispositivo> {
 
     @Override
     public List<Dispositivo> listar() throws SQLException {
-        String sql = "CALL sp_listar_dispositivos()";
+        String sql = """
+                SELECT id, nombre, serial, marca, modelo, categoria, estado, ubicacion, fecha_ingreso
+                FROM dispositivo
+                ORDER BY id DESC
+                """;
         List<Dispositivo> dispositivos = new ArrayList<>();
 
         try (
                 Connection connection =
                         ConexionPostgresDatabase.getConnection();
 
-                CallableStatement statement =
-                        connection.prepareCall(sql);
+                PreparedStatement statement =
+                        connection.prepareStatement(sql);
 
                 ResultSet resultSet =
                         statement.executeQuery()
@@ -91,50 +86,82 @@ public class DispositivoDao implements CrudDao<Dispositivo> {
         return dispositivos;
     }
 
+    public List<Dispositivo> buscarPorFiltro(String filtro) throws SQLException {
+        String criterio = "%" + filtro.toLowerCase() + "%";
+        String sql = """
+                SELECT id, nombre, serial, marca, modelo, categoria, estado, ubicacion, fecha_ingreso
+                FROM dispositivo
+                WHERE LOWER(nombre) LIKE ?
+                   OR LOWER(serial) LIKE ?
+                   OR LOWER(marca) LIKE ?
+                   OR LOWER(modelo) LIKE ?
+                   OR LOWER(categoria) LIKE ?
+                   OR LOWER(estado) LIKE ?
+                   OR LOWER(COALESCE(ubicacion, '')) LIKE ?
+                ORDER BY id DESC
+                """;
+
+        List<Dispositivo> dispositivos = new ArrayList<>();
+        try (Connection connection = ConexionPostgresDatabase.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            for (int i = 1; i <= 7; i++) {
+                statement.setString(i, criterio);
+            }
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    dispositivos.add(mapear(resultSet));
+                }
+            }
+        }
+        return dispositivos;
+    }
+
+    public boolean actualizarEstado(int id, String estado) throws SQLException {
+        String sql = "UPDATE dispositivo SET estado = ? WHERE id = ?";
+        try (Connection connection = ConexionPostgresDatabase.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, estado);
+            statement.setInt(2, id);
+            return statement.executeUpdate() > 0;
+        }
+    }
+
     @Override
     public boolean actualizar(Dispositivo dispositivo) throws SQLException {
-        String sql = "CALL sp_actualizar_dispositivo(?,?,?,?,?,?,?,?,?)";
+        String sql = """
+                UPDATE dispositivo
+                SET nombre = ?, serial = ?, marca = ?, modelo = ?, categoria = ?, estado = ?,
+                    ubicacion = ?, fecha_ingreso = ?
+                WHERE id = ?
+                """;
 
         try (
                 Connection connection =
                         ConexionPostgresDatabase.getConnection();
 
-                CallableStatement statement =
-                        connection.prepareCall(sql)
+                PreparedStatement statement =
+                        connection.prepareStatement(sql)
         ) {
-            statement.setString(1, dispositivo.getNombre());
-            statement.setString(2, dispositivo.getSerial());
-            statement.setString(3, dispositivo.getMarca());
-            statement.setString(4, dispositivo.getModelo());
-            statement.setString(5, dispositivo.getCategoria());
-            statement.setString(6, dispositivo.getEstado());
-            statement.setString(7, dispositivo.getUbicacion());
-
-            statement.setDate(
-                    8,
-                    dispositivo.getFechaIngreso() == null
-                            ? null
-                            : Date.valueOf(dispositivo.getFechaIngreso())
-            );
-
+            completarStatement(statement, dispositivo);
             statement.setInt(9, dispositivo.getId());
-            return statement.execute();
+            return statement.executeUpdate() > 0;
         }
     }
 
     @Override
     public boolean eliminar(int id) throws SQLException {
-        String sql = "CALL sp_eliminar_dispositivo(?)";
+        String sql = "DELETE FROM dispositivo WHERE id = ?";
 
         try (
                 Connection connection =
                         ConexionPostgresDatabase.getConnection();
 
-                CallableStatement statement =
-                        connection.prepareCall(sql)
+                PreparedStatement statement =
+                        connection.prepareStatement(sql)
         ) {
             statement.setInt(1, id);
-            return statement.execute();
+            return statement.executeUpdate() > 0;
         }
     }
 
