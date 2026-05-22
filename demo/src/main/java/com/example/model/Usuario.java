@@ -6,6 +6,7 @@ public class Usuario {
     private String correo;
     private String password;
     private int idRol;
+    private String estado;
 
     public Usuario() {}
 
@@ -47,6 +48,14 @@ public class Usuario {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getEstado() {
+        return estado;
+    }
+
+    public void setEstado(String estado) {
+        this.estado = estado;
     }
 
     public int getIdRol() {

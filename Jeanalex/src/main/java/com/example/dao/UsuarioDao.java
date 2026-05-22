@@ -15,7 +15,7 @@ import java.util.Optional;
 public class UsuarioDao implements CrudDao<Usuario> {
 
     public Optional<Usuario> login(String correo, String password) throws SQLException {
-        String sql = "CALL sp_login_usuario(?,?)";
+       String sql =  "SELECT * FROM fn_login_usuario(?, ?)";    
 
         try (Connection connection = ConexionPostgresDatabase.getConnection();
              CallableStatement statement = connection.prepareCall(sql)) {
@@ -165,7 +165,7 @@ public class UsuarioDao implements CrudDao<Usuario> {
         }
 
         try {
-            usuario.setActivo(resultSet.getBoolean("activo"));
+            usuario.setEstado(resultSet.getString("estado"));
         } catch (SQLException ignored) {
             // Columna no disponible
         }
