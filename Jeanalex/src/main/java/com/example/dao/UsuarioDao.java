@@ -14,31 +14,42 @@ import java.util.Optional;
 
 public class UsuarioDao implements CrudDao<Usuario> {
 
-    public Optional<Usuario> login(String correo, String password) throws SQLException {
-       String sql =  "SELECT * FROM fn_login_usuario(?, ?)";    
+  public Optional<Usuario> autenticar(
+        String correo,
+        String contrasena
+) throws SQLException {
 
-        try (Connection connection = ConexionPostgresDatabase.getConnection();
-             CallableStatement statement = connection.prepareCall(sql)) {
+    String sql =
+            "SELECT * FROM fn_login_usuario(?, ?)";
 
-            statement.setString(1, correo);
-            statement.setString(2, password);
+    try (
+            Connection connection =
+                    ConexionPostgresDatabase.getConnection();
 
-            try (ResultSet resultSet = statement.executeQuery()) {
-                if (resultSet.next()) {
-                    Usuario usuario = new Usuario();
-                    usuario.setId(resultSet.getInt("id"));
-                    usuario.setNombre(resultSet.getString("nombre"));
-                    usuario.setCorreo(resultSet.getString("correo"));
-                    usuario.setContrasenaHash(resultSet.getString("contrasena_hash"));
-                    usuario.setIdRol(resultSet.getInt("id_rol"));
-                    usuario.setActivo(resultSet.getBoolean("activo"));
-                    return Optional.of(usuario);
-                }
+            PreparedStatement statement =
+                    connection.prepareStatement(sql)
+    ) {
+
+        statement.setString(1, correo);
+        statement.setString(2, contrasena);
+
+        try (
+                ResultSet resultSet =
+                        statement.executeQuery()
+        ) {
+
+            if (resultSet.next()) {
+
+                Usuario usuario =
+                        mapear(resultSet);
+
+                return Optional.of(usuario);
             }
         }
-
-        return Optional.empty();
     }
+
+    return Optional.empty();
+}
 
     @Override
     public Usuario crear(Usuario usuario) throws SQLException {
