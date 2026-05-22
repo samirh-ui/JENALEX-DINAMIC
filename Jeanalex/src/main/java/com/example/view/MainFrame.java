@@ -31,9 +31,9 @@ public class MainFrame extends JFrame {
     private final DispositivoController dispositivoController;
     private final TicketController ticketController;
 
-    private final DefaultTableModel usuariosTableModel = new DefaultTableModel(
-            new String[]{"ID", "Nombre", "Correo", "Rol", "Activo"}, 0
-    );
+        private final DefaultTableModel usuariosTableModel = new DefaultTableModel(
+            new String[]{"ID", "Nombre", "Correo", "Rol", "Estado"}, 0
+        );
     private final DefaultTableModel dispositivosTableModel = new DefaultTableModel(
             new String[]{"ID", "Nombre", "Serial", "Marca", "Modelo", "Categoria", "Estado", "Ubicacion"}, 0
     );
@@ -307,11 +307,11 @@ public class MainFrame extends JFrame {
             usuariosTableModel.setRowCount(0);
             for (Usuario usuario : usuarioController.listarUsuarios()) {
                 usuariosTableModel.addRow(new Object[]{
-                        usuario.getId(),
-                        usuario.getNombre(),
-                        usuario.getCorreo(),
-                        usuario.getIdRol(),
-                        usuario.isActivo()
+                    usuario.getId(),
+                    usuario.getNombre(),
+                    usuario.getCorreo(),
+                    usuario.getIdRol(),
+                    usuario.getEstado()
                 });
             }
         } catch (SQLException exception) {
