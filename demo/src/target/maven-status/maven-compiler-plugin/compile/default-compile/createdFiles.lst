@@ -1,0 +1,8 @@
+com\example\model\Asignacion.class
+com\example\view\HelpDeskView.class
+com\example\Main.class
+com\example\model\Dispositivo.class
+com\example\controller\HelpDeskController.class
+com\example\model\Ticket.class
+com\example\service\HelpDeskSystem.class
+com\example\model\Usuario.class
